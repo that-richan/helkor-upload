@@ -3,6 +3,7 @@ description: Uploads the code to the server, unzips it and restarts the server.
 branding:
   icon: arrow-up-circle
   color: black
+author: Richard Jelínek
 inputs:
   SERVER_ID:
     description: 'The server ID'
