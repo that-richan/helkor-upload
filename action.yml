@@ -1,0 +1,74 @@
+name: Helkor upload
+description: Uploads the code to the server, unzips it and restarts the server.
+branding:
+  icon: arrow-up-circle
+  color: black
+inputs:
+  SERVER_ID:
+    description: 'The server ID'
+    required: true
+  AUTH_TOKEN:
+    description: 'The authorization token for the Helkor API'
+    required: true
+  FTP_PASSWORD:
+    description: 'The password for the FTP user'
+    required: true
+  FOLDER_TO_ZIP:
+    description: 'The folder to zip'
+    required: true
+  ZIP_FILE_NAME:
+    description: 'The name of the zip file to upload'
+    default: "code.zip"
+  UPLOAD_PATH:
+    description: 'The path to upload the code to'
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Zip
+      shell: bash
+      working-directory: ${{ inputs.FOLDER_TO_ZIP }}
+      run: zip -qq -r ../${{ inputs.ZIP_FILE_NAME }} *
+
+    - name: Get user details
+      id: whoami
+      uses: fjogeleit/http-request-action@v1.15.2
+      with:
+        url: https://api.helkor.eu/whoami
+        method: 'POST'
+        customHeaders: '{"Authorization": "${{ inputs.AUTH_TOKEN }}"}'
+
+    - name: Get server details
+      id: serverDetail
+      uses: fjogeleit/http-request-action@v1.15.2
+      with:
+        url: https://api.helkor.eu/server/${{ inputs.SERVER_ID }}/detail
+        method: 'POST'
+        customHeaders: '{"Authorization": "${{ inputs.AUTH_TOKEN }}"}'
+
+    - name: Upload
+      uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+      with:
+        server: ${{ fromJson(steps.serverDetail.outputs.response).container.sftp_details.ip }}
+        port: ${{ fromJson(steps.serverDetail.outputs.response).container.sftp_details.port }}
+        sftp_only: true
+        username: ${{ fromJson(steps.whoami.outputs.response).user.identifier }}.${{ inputs.SERVER_ID }}
+        password: ${{ inputs.FTP_PASSWORD }}
+        local_path: ${{ inputs.ZIP_FILE_NAME }}
+        remote_path: ${{ inputs.UPLOAD_PATH }}/${{ inputs.ZIP_FILE_NAME }}
+
+    - name: Unzip
+      uses: fjogeleit/http-request-action@v1.15.2
+      with:
+        url: https://api.helkor.eu/server/${{ inputs.SERVER_ID }}/files/decompress
+        method: 'POST'
+        customHeaders: '{"Authorization": "${{ inputs.AUTH_TOKEN }}"}'
+        data: '{"file": "${{ inputs.ZIP_FILE_NAME }}", "path": "${{ inputs.UPLOAD_PATH }}"}'
+
+    - name: Restart server
+      uses: fjogeleit/http-request-action@v1.15.2
+      with:
+        url: https://api.helkor.eu/server/${{ inputs.SERVER_ID }}/power/restart
+        method: 'POST'
+        customHeaders: '{"Authorization": "${{ inputs.AUTH_TOKEN }}"}'
