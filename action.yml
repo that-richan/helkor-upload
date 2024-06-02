@@ -56,8 +56,8 @@ runs:
         sftp_only: true
         username: ${{ fromJson(steps.whoami.outputs.response).user.identifier }}.${{ inputs.SERVER_ID }}
         password: ${{ inputs.FTP_PASSWORD }}
-        local_path: ${{ inputs.ZIP_FILE_NAME }}
-        remote_path: ${{ inputs.UPLOAD_PATH }}${{ inputs.ZIP_FILE_NAME }}
+        local_path: ${{ inputs.FOLDER_TO_ZIP }}/../${{ inputs.ZIP_FILE_NAME }}
+        remote_path: ${{ inputs.UPLOAD_PATH }}/${{ inputs.ZIP_FILE_NAME }}
 
     - name: Unzip
       uses: fjogeleit/http-request-action@v1.15.2
